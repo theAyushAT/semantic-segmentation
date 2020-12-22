@@ -1,0 +1,8 @@
+image,label
+dataset/cityscapes/train/0001TP_006840.png,dataset/cityscapes/train_labels/0001TP_006840_L.png
+dataset/cityscapes/train/0001TP_008910.png,dataset/cityscapes/train_labels/0001TP_008910_L.png
+dataset/cityscapes/train/0001TP_009840.png,dataset/cityscapes/train_labels/0001TP_009840_L.png
+dataset/cityscapes/train/Seq05VD_f01620.png,dataset/cityscapes/train_labels/Seq05VD_f01620_L.png
+dataset/cityscapes/train/Seq05VD_f01950.png,dataset/cityscapes/train_labels/Seq05VD_f01950_L.png
+dataset/cityscapes/train/Seq05VD_f03450.png,dataset/cityscapes/train_labels/Seq05VD_f03450_L.png
+dataset/cityscapes/train/Seq05VD_f04830.png,dataset/cityscapes/train_labels/Seq05VD_f04830_L.png
