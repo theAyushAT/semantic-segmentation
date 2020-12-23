@@ -14,6 +14,7 @@ import torch.nn.functional as F
 from datasetcClass import classDataset
 from models.hrnet import hrnet
 
+
 def train(epoch,n_epochs,model,data_loader,criterion,optimizer):
     model.train()
     losses = AverageMeter()
@@ -40,13 +41,9 @@ def train(epoch,n_epochs,model,data_loader,criterion,optimizer):
     print("Epoch Loss", losses.avg)
 
         
-def validate_model(epoch, model, data_loader, criterion,best_val_iou,data_name,n_classes,output_dir):
-
+def validate_model(epoch, model, data_loader, criterion,best_val_iou,n_classes,output_dir):
 
     model.eval()
-    class_labels = torch.load(os.path.join("data", data_name + ".pth"))[
-        "label_name"
-    ]
     losses = AverageMeter()
     intersection_meter = AverageMeter()
     union_meter = AverageMeter()
@@ -108,13 +105,13 @@ def main():
         "--output_dir",
         type=str,
         default="./",
-        help="path to save checkpoints and wandb, final output path will be this path + wandbexperiment name so the output_dir should be root directory",
+        help="output directory to save model",
     )
 
     parser.add_argument(
         "--n_classes",
         type=int,
-        help="",
+        help="number of claesses",
     )
     
     parser.add_argument(
@@ -122,33 +119,31 @@ def main():
         type=int,
         default=360,
         required=True,
-        help="to read dict with class mapping from data/ folder required so need to create label mapping in beginning",
+        help="height of image",
     )
     
     parser.add_argument(
         "--width",
         type=int,
-        default=360,
+        default=480,
         required=True,
-        help="to read dict with class mapping from data/ folder required so need to create label mapping in beginning",
+        help="width of image",
     )
  
     parser.add_argument(
         "--batch_size",
         type=int,
-        default=2,
+        default=8,
         required=True,
-        help="to read dict with class mapping from data/ folder required so need to create label mapping in beginning",
+        help="batch size",
     )
-               
     parser.add_argument(
-        "--data_name",
-        type=str,
-        default="",
+        "--n_workers",
+        type=int,
+        default=4,
         required=True,
-        help="to read dict with class mapping from data/ folder required so need to create label mapping in beginning",
+        help="number of workers for data loader",
     )
-
     args = parser.parse_args()
     
     validate = False
@@ -156,39 +151,41 @@ def main():
     if os.path.exists(os.path.join(args.csvpath, "valid.csv")):
             validate = True
     mean_std = ([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]) #cityscapes
-    train_object = classDataset(args.csvpath,'train',args.height,args.width,args.data_name,mean_std)
+
+    train_object = classDataset(args.csvpath,'train',args.height,args.width,mean_std)
     train_loader = DataLoader(
         train_object,
         batch_size=args.batch_size,
         shuffle=True,
-        num_workers=4,
+        num_workers=args.n_workers,
     )
 
     if validate:
-        valid_object = classDataset(args.csvpath,'valid',args.height,args.width,args.data_name,mean_std)
+        valid_object = classDataset(args.csvpath,'valid',args.height,args.width,mean_std)
         valid_loader = DataLoader(
             valid_object,
             batch_size=args.batch_size,
             shuffle=False,
-            num_workers=4,
+            num_workers=args.n_workers,
         )
+        
     model = hrnet(args.n_classes)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=5e-3)
     best_val_iou = 0
     if torch.cuda.is_available():
         model.cuda()
+        
     start_epoch = 1 
     n_epochs = 500
     for epoch in range(start_epoch, n_epochs + 1):
         train(epoch,n_epochs,model,train_loader,criterion,optimizer)
         if validate:
                 best_val_iou = validate_model(
-                    epoch, model, valid_loader, criterion, best_val_iou,args.data_name,args.n_classes,args.output_dir
+                    epoch, model, valid_loader, criterion, best_val_iou,args.n_classes,args.output_dir
                 )
 
  
 if __name__ == "__main__":
     main()
     
-# python training.py --csvpath dataset/cityscapes --n_classes 19 --height 360 --width 360 --batch_size 1 --data_name cityscapes

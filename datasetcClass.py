@@ -6,18 +6,12 @@ import cv2
 import pandas as pd
 import numpy as np
 import os
-
 import random
 import matplotlib.pyplot as plt
 
-# Todo: add support for spatial data augmentations
-
-
 class classDataset(Dataset):
-    def __init__(self,csvpath,mode,height,width,data_name, mean_std,debug=False):
-        """
-
-        Single format used, cfg file will contain directory of csv files        .
+    def __init__(self,csvpath,mode,height,width, mean_std,debug=False):
+        """      
         Format of csv file:
         It contains 2 columns
         1. Path to image
@@ -35,21 +29,23 @@ class classDataset(Dataset):
         self.width = width
         self.mode = mode
         self.debug = debug
-        self.label_mapping = torch.load(
-            os.path.join("data", data_name + ".pth")
-        )["label_map"]
 
 
-
+    def _set_seed(self, seed):
+        random.seed(seed)
+        torch.manual_seed(seed)
+        
     def __len__(self):
         """returns length of CSV file"""
         return len(self.csv_file)
 
     def __getitem__(self, idx):
 
-        image = cv2.imread(self.csv_file[idx, 0], cv2.IMREAD_COLOR)  
-        label = self.convert_label(cv2.imread(
+        image = cv2.imread(self.csv_file[idx, 0], cv2.IMREAD_COLOR) 
+        # print(self.csv_file[idx, 1]) 
+        label = (cv2.imread(
                 self.csv_file[idx, 1], cv2.IMREAD_GRAYSCALE))//255
+        # print(label.shape)
     
         if (
             image.shape[1] == self.width
@@ -67,14 +63,28 @@ class classDataset(Dataset):
                 (self.width, self.height),
                 cv2.INTER_NEAREST,
             )
-
-
-
+        
         if self.debug:
-            self.show_sample(image, label)
-
-        image = normalize(image,self.mean_std)
+            self.show_sample(image, label)  
+        transformation = transforms.Compose([transforms.ToPILImage(), transforms.ToTensor()])
+        
+        image = transforms.Normalize(mean=self.mean_std[0], std=self.mean_std[1])(transformation(image))
         label = torch.from_numpy(label)
+        
+        if self.mode == 'train':
+            # applying transforms
+            augment = [
+                transforms.RandomCrop(200),
+                transforms.RandomHorizontalFlip(0.5)
+            ]
+            tfs = transforms.Compose(augment)
+            # seed = random.randint(0, 2**32)
+            # self._set_seed(seed)
+            image = tfs(image)
+            # self._set_seed(seed)
+            label = tfs(label)
+        
+             
 
         sample = {
             "image": image,
@@ -90,15 +100,6 @@ class classDataset(Dataset):
         plt.imshow(label)
         plt.show()
 
-    def convert_label(self, label):
-        temp = label.copy()
 
-        for k, v in self.label_mapping.items():
-            label[temp == k] = v
-        return label 
 
-transformation = transforms.Compose(
-    [transforms.ToPILImage(), transforms.ToTensor()])
-    
-def normalize(image,mean_std):
-    return transforms.Normalize(mean=mean_std[0], std=mean_std[1])(transformation(image))
+
